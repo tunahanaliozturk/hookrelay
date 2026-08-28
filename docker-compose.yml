@@ -25,7 +25,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      # PostgreSQL 18 images store data under a major-version directory, so the volume goes one level up
+      # from where it did on 17 and earlier. Mounting the old path makes the container refuse to start.
+      - postgres-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hookrelay -d hookrelay"]
       interval: 5s
