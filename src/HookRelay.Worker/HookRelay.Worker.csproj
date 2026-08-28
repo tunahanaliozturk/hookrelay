@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <ItemGroup>
+    <ProjectReference Include="../HookRelay.Infrastructure/HookRelay.Infrastructure.csproj" />
+    <ProjectReference Include="../HookRelay.ServiceDefaults/HookRelay.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+</Project>
