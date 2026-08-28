@@ -300,16 +300,30 @@ Things the suite asserts that are easy to claim and easy to get wrong:
 
 ## Benchmarks
 
-Signing sits on the hot path of every attempt, so its cost is measured rather than assumed. The MAC is
-computed without allocating a hasher, without building an intermediate signed-payload string, and out of a
-pooled buffer above 1 KB.
+Signing sits on the hot path of every attempt, so its cost is measured rather than assumed.
+
+| What | Cost | Allocated |
+| --- | ---: | ---: |
+| Sign a 256 byte payload | 386 ns | 336 B |
+| Verify a 256 byte payload | 465 ns | 0 B |
+| Sign a 64 KB payload | 19.2 us | 336 B |
+| Look up an endpoint's pipeline, 1,000 endpoints | 24 ns | 152 B |
+| Run a call through the circuit breaker | 381 ns | 152 B |
+
+Two things worth taking from that. Signing is four to five orders of magnitude below the HTTP round trip
+it precedes, and its allocations stay flat from 256 bytes to 64 KB because the MAC is computed without a
+hasher instance, without an intermediate signed-payload string, and out of a pooled buffer above 1 KB.
+And per-endpoint isolation, which sounds expensive, costs about 370 nanoseconds a call, so giving every
+destination its own circuit breaker is free next to the network.
+
+Full output and the reasoning: [docs/results/benchmarks.md](docs/results/benchmarks.md).
 
 ```bash
-dotnet run --project tests/HookRelay.Benchmarks --configuration Release -- --filter '*Signing*'
+dotnet run --project tests/HookRelay.Benchmarks --configuration Release -- --filter '*' --job Short
 ```
 
-Results land in `BenchmarkDotNet.Artifacts/`. Numbers from a shared CI runner are directional only, which
-is why the nightly job publishes them as an artifact instead of committing them.
+Numbers from a shared CI runner are directional only, which is why the nightly job publishes them as an
+artifact instead of overwriting the committed ones.
 
 ## What this does not do
 
