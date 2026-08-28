@@ -28,10 +28,18 @@ AND NOT EXISTS (
     SELECT 1 FROM deliveries AS earlier
     WHERE earlier.ordering_key = d.ordering_key
       AND earlier.status IN (0, 1)
-      AND earlier.id < d.id)
+      AND earlier.sequence < d.sequence)
 ```
 
-Delivery ids are UUIDv7, so `id` ordering is production ordering.
+`sequence` is a monotonic value assigned by the database, copied onto each delivery from the outbox row it
+was fanned out from.
+
+The first version compared UUIDv7 primary keys instead, on the reasoning that a v7 identifier sorts by
+time. It does, but only down to the millisecond, and the relay creates every delivery in a fan-out pass
+with one timestamp, so inside a batch the ids sorted by their random tail. Ordering happened to hold when
+batches were small and broke as soon as they were not. A database sequence is monotonic by construction and
+does not depend on clock resolution, on the clock being monotonic, or on rows being created at distinct
+instants.
 
 Kafka is still keyed by the ordering key, but for affinity rather than correctness: it keeps a stream's
 attempts on one worker, one connection pool, and one circuit-breaker instance.
@@ -47,4 +55,9 @@ attempts on one worker, one connection pool, and one circuit-breaker instance.
 - A stranded claim, from a worker that died, blocks its key until the stale-claim sweep returns it. That
   bounds the damage by `StaleClaimTimeout` rather than forever, and it is covered by its own test.
 - The claim query is more expensive than a plain "oldest pending row". It is backed by a partial index on
-  `(ordering_key, id)` limited to non-terminal rows, which keeps the probe off the bulk of the table.
+  `(ordering_key, sequence)` limited to non-terminal rows, which keeps the probe off the bulk of the table.
+- Sequence values are assigned at insert, and a transaction that took a lower value can commit after one
+  that took a higher value. Within one ordering key that would need two concurrent writers producing events
+  for the same aggregate, which is not how aggregates are usually written, but it is a real limit rather
+  than an impossibility. Closing it properly means serialising writers per aggregate, which belongs to the
+  producing service rather than here.

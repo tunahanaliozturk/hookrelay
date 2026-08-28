@@ -140,12 +140,16 @@ AND NOT EXISTS (
     SELECT 1 FROM deliveries AS earlier
     WHERE earlier.ordering_key = d.ordering_key
       AND earlier.status IN (0, 1)
-      AND earlier.id < d.id)
+      AND earlier.sequence < d.sequence)
 ```
 
-Delivery ids are UUIDv7, so ordering by id is ordering by production time. Kafka is still keyed by the
-ordering key, but for worker affinity rather than correctness. Full reasoning in
-[ADR 2](docs/adr/0002-ordering-is-a-database-claim-not-a-kafka-partition.md).
+Position comes from a database sequence, not from the id. UUIDv7 was the obvious choice and it is wrong
+here: it only orders down to the millisecond, and a fan-out pass creates every delivery with the same
+timestamp, so within one batch the ids sort by their random tail. That bug was live until the ordering
+tests caught it.
+
+Kafka is still keyed by the ordering key, but for worker affinity rather than correctness. Full reasoning
+in [ADR 2](docs/adr/0002-ordering-is-a-database-claim-not-a-kafka-partition.md).
 
 A useful consequence: workers can process signals with bounded concurrency instead of one partition at a
 time, because no two in-flight signals can belong to the same ordered stream. Throughput is not capped by
@@ -342,6 +346,10 @@ Worth being explicit, because a portfolio project that claims no limitations is 
 - **Payloads are stored as `jsonb`,** so key order and whitespace are normalised. The signature is computed
   over what is actually sent, so this is consistent, but it is not byte-identical to what the producer
   passed in.
+- **Ordering assumes one writer per aggregate.** Sequence values are taken at insert, so a transaction that
+  took a lower one can commit after a transaction that took a higher one. Two concurrent writers producing
+  events for the same aggregate can therefore be fanned out in the wrong order. Serialising them belongs to
+  the producing service.
 
 ## Design decisions
 
