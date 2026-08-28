@@ -1,0 +1,108 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Benchmarks, nightly at 03:00 UTC.
+    - cron: "0 3 * * *"
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    name: build and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      # Warnings are errors in Directory.Build.props, so this is the style and analyzer gate too.
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Verify formatting
+        run: dotnet format --verify-no-changes --no-restore
+
+      - name: Unit tests
+        run: dotnet run --project tests/HookRelay.UnitTests --configuration Release --no-build
+
+  integration:
+    name: integration and chaos suite
+    runs-on: ubuntu-latest
+    # Real Postgres and real Kafka in containers, plus the chaos receiver. Slower than the unit suite and
+    # the only place the ordering, isolation, and at-least-once claims are actually proven.
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Integration and chaos tests
+        run: dotnet run --project tests/HookRelay.IntegrationTests --configuration Release --no-build
+
+  compose:
+    name: docker compose demo
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      # The README promises this works. Nothing keeps that true except running it.
+      - name: Build and start the stack
+        run: docker compose up --build --detach --wait --wait-timeout 300
+
+      - name: Show service state
+        if: always()
+        run: docker compose ps
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+
+      - name: Tear down
+        if: always()
+        run: docker compose down --volumes
+
+  benchmarks:
+    name: benchmarks
+    runs-on: ubuntu-latest
+    # Nightly only. Benchmark numbers from a shared CI runner are directional, not authoritative, and the
+    # committed results under docs/results were measured on a quiet machine.
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Run benchmarks
+        run: dotnet run --project tests/HookRelay.Benchmarks --configuration Release -- --filter '*' --exporters json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: BenchmarkDotNet.Artifacts/results/

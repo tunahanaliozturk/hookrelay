@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HookRelay.Api/HookRelay.Api.csproj" />
+    <Project Path="src/HookRelay.AppHost/HookRelay.AppHost.csproj" />
+    <Project Path="src/HookRelay.ChaosReceiver/HookRelay.ChaosReceiver.csproj" />
+    <Project Path="src/HookRelay.Domain/HookRelay.Domain.csproj" />
+    <Project Path="src/HookRelay.Infrastructure/HookRelay.Infrastructure.csproj" />
+    <Project Path="src/HookRelay.Relay/HookRelay.Relay.csproj" />
+    <Project Path="src/HookRelay.ServiceDefaults/HookRelay.ServiceDefaults.csproj" />
+    <Project Path="src/HookRelay.Worker/HookRelay.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HookRelay.Benchmarks/HookRelay.Benchmarks.csproj" />
+    <Project Path="tests/HookRelay.IntegrationTests/HookRelay.IntegrationTests.csproj" />
+    <Project Path="tests/HookRelay.UnitTests/HookRelay.UnitTests.csproj" />
+  </Folder>
+</Solution>
