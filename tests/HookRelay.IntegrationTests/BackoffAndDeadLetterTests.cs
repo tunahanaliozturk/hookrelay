@@ -13,6 +13,16 @@ namespace HookRelay.IntegrationTests;
 [Collection(InfrastructureFixtureBinding.Name)]
 public sealed class BackoffAndDeadLetterTests(ContainerFixture containers)
 {
+    /// <summary>
+    /// A threshold high enough that the circuit never opens. These tests are about the ladder and the
+    /// dead-letter store, and an open circuit would replace the HTTP outcomes they assert on with
+    /// CircuitOpen. Breaker behaviour has its own suite.
+    /// </summary>
+    private static readonly Dictionary<string, string?> NoCircuitBreaker = new(StringComparer.Ordinal)
+    {
+        ["HookRelay:Delivery:CircuitMinimumThroughput"] = "1000",
+    };
+
     private static readonly TimeSpan[] Ladder =
     [
         TimeSpan.FromMilliseconds(200),
@@ -25,7 +35,10 @@ public sealed class BackoffAndDeadLetterTests(ContainerFixture containers)
     {
         // The claim in the docs is a specific ladder, so the test reads the recorded attempt timestamps
         // and checks them against it. "Eventually retries a few times" is not the same promise.
-        await using PipelineHarness harness = await PipelineHarness.StartAsync(containers, "backoff_schedule");
+        await using PipelineHarness harness = await PipelineHarness.StartAsync(
+            containers,
+            "backoff_schedule",
+            settings: NoCircuitBreaker);
         (var endpoint, _) = await harness.RegisterEndpointAsync("a", failureRate: 1);
 
         await harness.PublishAsync("invoice.paid", "inv_1", sequence: 1);
@@ -56,7 +69,10 @@ public sealed class BackoffAndDeadLetterTests(ContainerFixture containers)
     [Fact]
     public async Task Every_attempt_is_recorded_including_the_ones_that_failed()
     {
-        await using PipelineHarness harness = await PipelineHarness.StartAsync(containers, "backoff_log");
+        await using PipelineHarness harness = await PipelineHarness.StartAsync(
+            containers,
+            "backoff_log",
+            settings: NoCircuitBreaker);
         (var endpoint, _) = await harness.RegisterEndpointAsync("a", failureRate: 1);
 
         await harness.PublishAsync("invoice.paid", "inv_1", sequence: 1);
@@ -78,7 +94,10 @@ public sealed class BackoffAndDeadLetterTests(ContainerFixture containers)
     [Fact]
     public async Task A_delivery_that_runs_out_of_attempts_lands_in_the_dead_letter_store_with_its_payload()
     {
-        await using PipelineHarness harness = await PipelineHarness.StartAsync(containers, "backoff_dlq");
+        await using PipelineHarness harness = await PipelineHarness.StartAsync(
+            containers,
+            "backoff_dlq",
+            settings: NoCircuitBreaker);
         (var endpoint, _) = await harness.RegisterEndpointAsync("a", failureRate: 1);
 
         await harness.PublishAsync("invoice.paid", "inv_1", sequence: 1);
@@ -100,7 +119,10 @@ public sealed class BackoffAndDeadLetterTests(ContainerFixture containers)
     {
         // The full cycle a support engineer walks: watch it fail, see it dead-lettered, get the customer to
         // fix their endpoint, replay, and confirm from the log that it went through.
-        await using PipelineHarness harness = await PipelineHarness.StartAsync(containers, "backoff_replay");
+        await using PipelineHarness harness = await PipelineHarness.StartAsync(
+            containers,
+            "backoff_replay",
+            settings: NoCircuitBreaker);
         (var endpoint, string secret) = await harness.RegisterEndpointAsync("a", failureRate: 1);
 
         await harness.PublishAsync("invoice.paid", "inv_1", sequence: 1);

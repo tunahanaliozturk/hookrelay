@@ -24,7 +24,7 @@ internal sealed class DeliveryConfiguration : IEntityTypeConfiguration<Delivery>
             .HasFilter("status = 0");
 
         // Backs the not-exists probe that keeps a key's stream in order.
-        builder.HasIndex(delivery => new { delivery.OrderingKey, delivery.Id })
+        builder.HasIndex(delivery => new { delivery.OrderingKey, delivery.Sequence })
             .HasDatabaseName("ix_deliveries_ordering_key")
             .HasFilter("status IN (0, 1)");
 

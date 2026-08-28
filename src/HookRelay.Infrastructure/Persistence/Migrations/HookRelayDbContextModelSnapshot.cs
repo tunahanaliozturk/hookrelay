@@ -158,6 +158,10 @@ namespace HookRelay.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("secret_version");
 
+                    b.Property<long>("Sequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sequence");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
@@ -177,7 +181,7 @@ namespace HookRelay.Infrastructure.Persistence.Migrations
                         .IsDescending(false, true)
                         .HasDatabaseName("ix_deliveries_endpoint_log");
 
-                    b.HasIndex("OrderingKey", "Id")
+                    b.HasIndex("OrderingKey", "Sequence")
                         .HasDatabaseName("ix_deliveries_ordering_key")
                         .HasFilter("status IN (0, 1)");
 
@@ -364,6 +368,13 @@ namespace HookRelay.Infrastructure.Persistence.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("payload_json");
 
+                    b.Property<long>("Sequence")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("sequence");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Sequence"));
+
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
@@ -375,7 +386,11 @@ namespace HookRelay.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_outbox_messages");
 
-                    b.HasIndex("Status", "OrderingKey", "Id")
+                    b.HasIndex("Sequence")
+                        .IsUnique()
+                        .HasDatabaseName("ix_outbox_messages_sequence");
+
+                    b.HasIndex("Status", "OrderingKey", "Sequence")
                         .HasDatabaseName("ix_outbox_messages_claim");
 
                     b.ToTable("outbox_messages", (string)null);

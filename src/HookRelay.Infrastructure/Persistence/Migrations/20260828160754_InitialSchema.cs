@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -39,6 +40,7 @@ namespace HookRelay.Infrastructure.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
+                    sequence = table.Column<long>(type: "bigint", nullable: false),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     endpoint_id = table.Column<Guid>(type: "uuid", nullable: false),
                     outbox_message_id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -65,6 +67,8 @@ namespace HookRelay.Infrastructure.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
+                    sequence = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     event_type = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                     aggregate_id = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
@@ -157,7 +161,7 @@ namespace HookRelay.Infrastructure.Persistence.Migrations
             migrationBuilder.CreateIndex(
                 name: "ix_deliveries_ordering_key",
                 table: "deliveries",
-                columns: new[] { "ordering_key", "id" },
+                columns: new[] { "ordering_key", "sequence" },
                 filter: "status IN (0, 1)");
 
             migrationBuilder.CreateIndex(
@@ -180,7 +184,13 @@ namespace HookRelay.Infrastructure.Persistence.Migrations
             migrationBuilder.CreateIndex(
                 name: "ix_outbox_messages_claim",
                 table: "outbox_messages",
-                columns: new[] { "status", "ordering_key", "id" });
+                columns: new[] { "status", "ordering_key", "sequence" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_outbox_messages_sequence",
+                table: "outbox_messages",
+                column: "sequence",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_webhook_endpoints_tenant_id_status",

@@ -57,7 +57,7 @@ public sealed class EndToEndChaosTests(ContainerFixture containers)
         }
 
         await PipelineHarness.WaitForAsync(
-            async () => !await harness.HasPendingWorkAsync(),
+            () => harness.IsSettledAsync(EventCount * 2),
             TimeSpan.FromMinutes(2),
             "every delivery to reach a terminal state");
 
@@ -106,7 +106,7 @@ public sealed class EndToEndChaosTests(ContainerFixture containers)
         }
 
         await PipelineHarness.WaitForAsync(
-            async () => !await harness.HasPendingWorkAsync(),
+            () => harness.IsSettledAsync(20),
             TimeSpan.FromMinutes(2),
             "every delivery to reach a terminal state");
 
@@ -150,7 +150,7 @@ public sealed class EndToEndChaosTests(ContainerFixture containers)
         }
 
         await PipelineHarness.WaitForAsync(
-            async () => !await harness.HasPendingWorkAsync(),
+            () => harness.IsSettledAsync(10),
             TimeSpan.FromMinutes(1),
             "every delivery to reach a terminal state");
 

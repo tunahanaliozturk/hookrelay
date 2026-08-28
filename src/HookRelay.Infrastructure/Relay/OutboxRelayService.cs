@@ -121,6 +121,7 @@ public sealed partial class OutboxRelayService(
                     message.TenantId,
                     endpoint.Id,
                     message.Id,
+                    message.Sequence,
                     message.EventType,
                     message.PayloadJson,
                     OrderingKey.For(endpoint.Id, message.AggregateId, endpoint.OrderingStrategy),
@@ -163,8 +164,8 @@ public sealed partial class OutboxRelayService(
                        FROM outbox_messages AS earlier
                        WHERE earlier.ordering_key = o.ordering_key
                          AND earlier.status = {pending}
-                         AND earlier.id < o.id)
-                 ORDER BY o.id
+                         AND earlier.sequence < o.sequence)
+                 ORDER BY o.sequence
                  LIMIT {batchSize}
                  FOR UPDATE SKIP LOCKED
                  """)

@@ -167,8 +167,8 @@ public sealed partial class DeliveryDispatcherService(
                        FROM deliveries AS earlier
                        WHERE earlier.ordering_key = d.ordering_key
                          AND earlier.status IN ({pending}, {inFlight})
-                         AND earlier.id < d.id)
-                 ORDER BY d.id
+                         AND earlier.sequence < d.sequence)
+                 ORDER BY d.sequence
                  LIMIT {batchSize}
                  FOR UPDATE OF d SKIP LOCKED
                  """)

@@ -30,8 +30,18 @@ public sealed class OutboxMessage
         OrderingKey = null!;
     }
 
-    /// <summary>Time-ordered identifier. Version 7 so the relay can claim rows in production order using the primary key.</summary>
+    /// <summary>Public identifier. Version 7, so it sorts roughly by time without leaking a row count.</summary>
     public Guid Id { get; private set; }
+
+    /// <summary>
+    /// Monotonic position, assigned by the database.
+    /// </summary>
+    /// <remarks>
+    /// Ordering cannot lean on <see cref="Id"/>. UUIDv7 is only ordered down to the millisecond, and a
+    /// burst of events published inside one millisecond sorts by the random tail, which is to say not at
+    /// all. A database sequence is monotonic by construction and independent of any clock.
+    /// </remarks>
+    public long Sequence { get; private set; }
 
     /// <summary>Owning tenant.</summary>
     public Guid TenantId { get; private set; }

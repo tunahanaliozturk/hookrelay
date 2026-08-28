@@ -271,7 +271,7 @@ public sealed class PipelineHarness : IAsyncDisposable
     /// <summary>Steps until nothing is left to do, moving the clock forward between passes.</summary>
     /// <param name="advance">How far to move the clock when a pass finds no work.</param>
     /// <param name="maxRounds">Safety valve.</param>
-    public async Task DrainAsync(TimeSpan? advance = null, int maxRounds = 40)
+    public async Task DrainAsync(TimeSpan? advance = null, int maxRounds = 250)
     {
         TimeSpan step = advance ?? TimeSpan.FromSeconds(1);
 
@@ -311,6 +311,24 @@ public sealed class PipelineHarness : IAsyncDisposable
     /// <summary>Runs the stale-claim sweep. Stepped mode only.</summary>
     public Task<int> SweepStaleClaimsAsync() =>
         _host.Services.GetRequiredService<MaintenanceService>().ReclaimStaleClaimsAsync(CancellationToken.None);
+
+    /// <summary>How many deliveries exist, whatever their state.</summary>
+    public async Task<int> DeliveryCountAsync()
+    {
+        await using AsyncServiceScope scope = CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<HookRelayDbContext>().Deliveries.CountAsync();
+    }
+
+    /// <summary>
+    /// True once <paramref name="expected"/> deliveries exist and none of them are still moving.
+    /// </summary>
+    /// <remarks>
+    /// Waiting on "nothing pending" alone is a race in live mode: right after publishing, the relay has
+    /// not fanned anything out yet, so there is nothing pending and the wait returns immediately.
+    /// </remarks>
+    /// <param name="expected">How many deliveries the publishes should produce.</param>
+    public async Task<bool> IsSettledAsync(int expected) =>
+        await DeliveryCountAsync() >= expected && !await HasPendingWorkAsync();
 
     /// <summary>True while any delivery is still pending or in flight.</summary>
     public async Task<bool> HasPendingWorkAsync()

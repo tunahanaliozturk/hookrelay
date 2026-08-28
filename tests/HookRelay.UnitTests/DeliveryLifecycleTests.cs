@@ -191,9 +191,10 @@ public sealed class DeliveryLifecycleTests
         Guid.NewGuid(),
         Guid.NewGuid(),
         Guid.NewGuid(),
+        sequence: 1,
         "invoice.paid",
         """{"amount":4200}""",
         "ep:abc",
-        secretVersion: 1,
+        1,
         Now);
 }

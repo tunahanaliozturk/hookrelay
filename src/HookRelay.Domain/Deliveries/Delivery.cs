@@ -36,8 +36,18 @@ public sealed class Delivery
         OrderingKey = null!;
     }
 
-    /// <summary>Time-ordered identifier. Sent to the receiver so it can de-duplicate, and the id the replay API takes.</summary>
+    /// <summary>Public identifier. Sent to the receiver so it can de-duplicate, and the id the replay API takes.</summary>
     public Guid Id { get; private set; }
+
+    /// <summary>
+    /// Position within the ordering key, copied from the outbox row this was fanned out from.
+    /// </summary>
+    /// <remarks>
+    /// This is what the dispatcher's head-of-line claim compares, and it survives a replay: a delivery
+    /// requeued out of the dead-letter store keeps the position it always had rather than jumping to the
+    /// back of its stream.
+    /// </remarks>
+    public long Sequence { get; private set; }
 
     /// <summary>Owning tenant.</summary>
     public Guid TenantId { get; private set; }
@@ -91,6 +101,7 @@ public sealed class Delivery
     /// <param name="tenantId">Owning tenant.</param>
     /// <param name="endpointId">Destination endpoint.</param>
     /// <param name="outboxMessageId">Source outbox row.</param>
+    /// <param name="sequence">Position within the ordering key, from the outbox row.</param>
     /// <param name="eventType">Event name.</param>
     /// <param name="payloadJson">The event body.</param>
     /// <param name="orderingKey">Ordering scope.</param>
@@ -100,6 +111,7 @@ public sealed class Delivery
         Guid tenantId,
         Guid endpointId,
         Guid outboxMessageId,
+        long sequence,
         string eventType,
         string payloadJson,
         string orderingKey,
@@ -117,6 +129,7 @@ public sealed class Delivery
             TenantId = tenantId,
             EndpointId = endpointId,
             OutboxMessageId = outboxMessageId,
+            Sequence = sequence,
             EventType = eventType,
             PayloadJson = payloadJson,
             OrderingKey = orderingKey,

@@ -10,11 +10,10 @@ public sealed class DeliveryOptions
     public const string SectionName = "HookRelay:Delivery";
 
     /// <summary>
-    /// The backoff ladder, as strings the configuration binder understands.
-    /// CI overrides this with a compressed ladder so the full retry cycle finishes in seconds.
+    /// The published backoff ladder: 30 seconds, 2 minutes, 10 minutes, 1 hour, 6 hours, 24 hours.
+    /// Seven attempts across a bounded window of 31 hours, 12 minutes and 30 seconds.
     /// </summary>
-    [MinLength(1)]
-    public IReadOnlyList<TimeSpan> RetryDelays { get; init; } =
+    public static IReadOnlyList<TimeSpan> DefaultRetryDelays { get; } =
     [
         TimeSpan.FromSeconds(30),
         TimeSpan.FromMinutes(2),
@@ -23,6 +22,17 @@ public sealed class DeliveryOptions
         TimeSpan.FromHours(6),
         TimeSpan.FromHours(24),
     ];
+
+    /// <summary>
+    /// Overrides the ladder. Empty means <see cref="DefaultRetryDelays"/>.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately empty by default rather than pre-filled. The configuration binder binds collections
+    /// into the instance it finds, so a pre-filled default would have configured values appended to the
+    /// production ladder instead of replacing it, and CI would have gone on quietly waiting out 30 second
+    /// rungs while believing it had compressed them.
+    /// </remarks>
+    public IList<TimeSpan> RetryDelays { get; init; } = [];
 
     /// <summary>Fraction of each delay that jitter may add or subtract.</summary>
     [Range(0d, 0.5d)]
@@ -75,5 +85,9 @@ public sealed class DeliveryOptions
     public bool AllowPrivateNetworkDestinations { get; init; }
 
     /// <summary>Builds the domain schedule from the configured values.</summary>
-    public RetrySchedule ToRetrySchedule() => new(RetryDelays, JitterRatio);
+    public RetrySchedule ToRetrySchedule()
+    {
+        IReadOnlyList<TimeSpan> delays = RetryDelays.Count > 0 ? [.. RetryDelays] : DefaultRetryDelays;
+        return new RetrySchedule(delays, JitterRatio);
+    }
 }

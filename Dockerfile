@@ -7,7 +7,9 @@ ARG PROJECT
 WORKDIR /src
 
 # Restore first, against the manifests only, so a source change does not invalidate the package layer.
-COPY global.json Directory.Build.props Directory.Packages.props HookRelay.slnx ./
+# .editorconfig comes along because analyzer severity lives in it, including the rules that are turned
+# off for EF's generated migrations. Without it the image build fails on code the tooling wrote.
+COPY global.json Directory.Build.props Directory.Packages.props HookRelay.slnx .editorconfig ./
 COPY src/HookRelay.Api/HookRelay.Api.csproj src/HookRelay.Api/
 COPY src/HookRelay.AppHost/HookRelay.AppHost.csproj src/HookRelay.AppHost/
 COPY src/HookRelay.ChaosReceiver/HookRelay.ChaosReceiver.csproj src/HookRelay.ChaosReceiver/

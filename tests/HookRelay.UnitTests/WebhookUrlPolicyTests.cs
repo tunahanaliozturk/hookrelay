@@ -43,13 +43,24 @@ public sealed class WebhookUrlPolicyTests
 
     [Theory]
     [InlineData("not a url")]
-    [InlineData("/relative/path")]
     [InlineData("")]
     [InlineData(null)]
     public void A_url_that_will_not_parse_is_refused(string? url)
     {
         WebhookUrlPolicy.Validate(url, allowInsecureHttp: true, allowPrivateNetworks: true)
             .ShouldBe(UrlValidationResult.NotAbsolute);
+    }
+
+    [Theory]
+    [InlineData("/relative/path")]
+    [InlineData("C:\\windows\\system32")]
+    public void A_path_is_refused_whatever_the_platform_decides_to_call_it(string url)
+    {
+        // Uri parsing is platform dependent here. On Linux a leading slash parses as an absolute file
+        // URI, on Windows it does not, so the two platforms disagree about which rule rejected it. Both
+        // refuse it, which is the part that matters.
+        WebhookUrlPolicy.Validate(url, allowInsecureHttp: true, allowPrivateNetworks: true)
+            .ShouldNotBe(UrlValidationResult.Allowed);
     }
 
     [Fact]
