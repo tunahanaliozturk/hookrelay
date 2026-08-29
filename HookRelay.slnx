@@ -14,4 +14,7 @@
     <Project Path="tests/HookRelay.IntegrationTests/HookRelay.IntegrationTests.csproj" />
     <Project Path="tests/HookRelay.UnitTests/HookRelay.UnitTests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/HookRelay.LicenseAudit/HookRelay.LicenseAudit.csproj" />
+  </Folder>
 </Solution>

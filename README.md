@@ -329,6 +329,34 @@ dotnet run --project tests/HookRelay.Benchmarks --configuration Release -- --fil
 Numbers from a shared CI runner are directional only, which is why the nightly job publishes them as an
 artifact instead of overwriting the committed ones.
 
+## Dependency licences
+
+Every package in the tree, at every depth, is permissively licensed, and the build checks rather than
+assumes:
+
+```bash
+dotnet run --project tools/HookRelay.LicenseAudit -- .
+```
+
+```
+Checking 170 packages against 12 allowed licences.
+
+   126  MIT
+    33  Apache-2.0
+     4  BSD-3-Clause
+     3  PostgreSQL
+     2  MIT (file)
+     1  BSD (file)
+     1  MIT (legacy url, terms read from LICENSES.txt)
+
+All 170 packages are permissively licensed.
+```
+
+This runs in CI. It exists because terms live in a file inside the package rather than anywhere a build
+looks: JsonPatch.Net, three levels below Aspire, ships a maintenance-fee agreement asking
+revenue-generating users for a monthly payment, and nothing said so. Aspire is pinned to the last release
+that predates it. Reasoning in [ADR 5](docs/adr/0005-permissive-dependencies-only.md).
+
 ## What this does not do
 
 Worth being explicit, because a portfolio project that claims no limitations is not being honest about any:
@@ -357,6 +385,7 @@ Worth being explicit, because a portfolio project that claims no limitations is 
 - [2. Ordering comes from a database claim, not from Kafka partitioning](docs/adr/0002-ordering-is-a-database-claim-not-a-kafka-partition.md)
 - [3. Signing secrets are encrypted, not hashed](docs/adr/0003-signing-secrets-are-encrypted-not-hashed.md)
 - [4. Backoff is persisted; Polly only guards the call](docs/adr/0004-backoff-is-persisted-polly-handles-the-call.md)
+- [5. Permissive dependencies only, checked by the build](docs/adr/0005-permissive-dependencies-only.md)
 
 ## Built with
 
