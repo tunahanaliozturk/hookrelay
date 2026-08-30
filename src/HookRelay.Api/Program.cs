@@ -27,10 +27,9 @@ if (app.Configuration.GetValue("HookRelay:MigrateOnStartup", defaultValue: false
     await scope.ServiceProvider.GetRequiredService<HookRelayDbContext>().Database.MigrateAsync();
 }
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+// Served in every environment, not just development. The contract is part of what this service offers,
+// and a document that only exists on a developer's machine is not a contract.
+app.MapOpenApi();
 
 app.MapHealthEndpoints();
 app.MapEndpointRoutes();

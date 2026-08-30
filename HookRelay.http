@@ -1,0 +1,100 @@
+# Manual exploration. Works in VS Code (REST Client), Visual Studio and Rider.
+# Start the stack first: docker compose up -d --build
+
+@api = http://localhost:5080
+@chaos = http://localhost:5090
+@tenant = 8f14e45f-ceea-467a-9f0b-2c1d0f4b1a01
+
+### Register an endpoint. The signing secret comes back exactly once, here, and never again.
+# @name register
+POST {{api}}/v1/endpoints
+Content-Type: application/json
+X-Tenant-Id: {{tenant}}
+
+{
+  "url": "http://chaos-receiver:8080/hooks/demo",
+  "description": "Demo receiver",
+  "eventTypes": ["invoice.*"],
+  "orderingStrategy": 0
+}
+
+### Keep these from the response above for the requests that follow.
+@endpoint = {{register.response.body.endpoint.id}}
+@secret = {{register.response.body.secret}}
+
+### Point the chaos receiver at that secret so it verifies signatures, and make it fail 30% of the time.
+POST {{chaos}}/_chaos/slots/demo
+Content-Type: application/json
+
+{ "secret": "{{secret}}", "failureRate": 0.3, "latencyMs": 10 }
+
+### Publish an event. Written to the outbox in the same transaction as the business write.
+POST {{api}}/v1/events
+Content-Type: application/json
+X-Tenant-Id: {{tenant}}
+
+{
+  "eventType": "invoice.paid",
+  "aggregateId": "inv_1001",
+  "payload": { "invoiceId": "inv_1001", "amountCents": 4200, "currency": "USD" }
+}
+
+### The delivery log for this endpoint. Every attempt is here, not just the final outcome.
+GET {{api}}/v1/endpoints/{{endpoint}}/deliveries?limit=20
+X-Tenant-Id: {{tenant}}
+
+### One delivery with its full attempt history: status codes, latency, and when the next try is due.
+GET {{api}}/v1/deliveries/REPLACE_WITH_A_DELIVERY_ID
+X-Tenant-Id: {{tenant}}
+
+### What the receiver actually saw, including duplicates and rejected signatures.
+GET {{chaos}}/_chaos/received?slot=demo
+
+### Make every delivery fail, so the retry ladder runs to exhaustion.
+POST {{chaos}}/_chaos/slots/demo
+Content-Type: application/json
+
+{ "secret": "{{secret}}", "failureRate": 1.0, "latencyMs": 0 }
+
+### Anything that exhausted its ladder ends up here, payload and all.
+GET {{api}}/v1/endpoints/{{endpoint}}/dead-letters
+X-Tenant-Id: {{tenant}}
+
+### Fix the receiver.
+POST {{chaos}}/_chaos/slots/demo
+Content-Type: application/json
+
+{ "secret": "{{secret}}", "failureRate": 0.0, "latencyMs": 0 }
+
+### Replay everything that was dead-lettered for this endpoint.
+POST {{api}}/v1/endpoints/{{endpoint}}/replay-dead-letters
+X-Tenant-Id: {{tenant}}
+
+### Pause. Deliveries queue up in order and nothing is dropped.
+POST {{api}}/v1/endpoints/{{endpoint}}/pause
+X-Tenant-Id: {{tenant}}
+
+### Resume. Everything queued goes out in its original order.
+POST {{api}}/v1/endpoints/{{endpoint}}/resume
+X-Tenant-Id: {{tenant}}
+
+### Rotate the secret. Retries already in flight keep verifying against the old one.
+POST {{api}}/v1/endpoints/{{endpoint}}/rotate-secret
+X-Tenant-Id: {{tenant}}
+
+### Change what this endpoint subscribes to.
+PUT {{api}}/v1/endpoints/{{endpoint}}/subscriptions
+Content-Type: application/json
+X-Tenant-Id: {{tenant}}
+
+{ "eventTypes": ["invoice.paid", "subscription.updated"] }
+
+### Every endpoint for this tenant. The secret is never in a read response.
+GET {{api}}/v1/endpoints
+X-Tenant-Id: {{tenant}}
+
+### Health and the contract.
+GET {{api}}/health/ready
+
+###
+GET {{api}}/openapi/v1.json

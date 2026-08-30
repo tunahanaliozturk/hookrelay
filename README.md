@@ -329,6 +329,13 @@ dotnet run --project tests/HookRelay.Benchmarks --configuration Release -- --fil
 Numbers from a shared CI runner are directional only, which is why the nightly job publishes them as an
 artifact instead of overwriting the committed ones.
 
+## Running it
+
+[`docs/operations.md`](docs/operations.md) covers the metrics, the alerts worth having, what each failure
+mode does, the retention settings and the two configuration switches that must never be enabled in
+production. [`HookRelay.http`](HookRelay.http) walks the whole API by hand, including driving the chaos
+receiver into failure and replaying what it dropped.
+
 ## Dependency licences
 
 Every package in the tree, at every depth, is permissively licensed, and the build checks rather than
